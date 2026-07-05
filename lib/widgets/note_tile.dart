@@ -56,7 +56,7 @@ class NoteTile extends StatelessWidget {
 
   List<TextSpan> _parseMarkdown(String text, TextStyle baseStyle, bool isDarkMode) {
     final List<TextSpan> spans = [];
-    final RegExp regex = RegExp(r'(\*\*\*.*?\*\*\*)|(\*\*.*?\*\*)|(\*.*?\*)|(\`.*?\`)');
+    final RegExp regex = RegExp(r'(\*\*\*[^\*]+\*\*\*)|(\*\*[^\*]+\*\*)|(\*[^\*]+\*)|(\`[^\`]+\`)');
     
     int start = 0;
     for (final Match match in regex.allMatches(text)) {

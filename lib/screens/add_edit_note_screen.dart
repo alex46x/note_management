@@ -17,7 +17,7 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _titleController;
-  late final TextEditingController _descriptionController;
+  late final MarkdownEditingController _descriptionController;
   late final TextEditingController _tagsController;
 
   bool _isSaving = false;
@@ -30,7 +30,7 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.note?.title ?? '');
-    _descriptionController = TextEditingController(text: widget.note?.description ?? '');
+    _descriptionController = MarkdownEditingController(text: widget.note?.description ?? '');
     _tagsController = TextEditingController(text: widget.note?.tags.join(', ') ?? '');
     _isPinned = widget.note?.isPinned ?? false;
 
@@ -557,5 +557,67 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
     _descriptionController.text = newText;
     _descriptionController.selection = TextSelection.collapsed(offset: newCursorOffset);
     _onTextChanged();
+  }
+}
+
+class MarkdownEditingController extends TextEditingController {
+  MarkdownEditingController({super.text});
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final baseStyle = style ?? const TextStyle();
+    
+    final List<TextSpan> spans = [];
+    final String text = this.text;
+    final RegExp regex = RegExp(r'(\*\*\*[^\*]+\*\*\*)|(\*\*[^\*]+\*\*)|(\*[^\*]+\*)|(\`[^\`]+\`)');
+    
+    int start = 0;
+    for (final Match match in regex.allMatches(text)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: text.substring(start, match.start), style: baseStyle));
+      }
+      
+      final String matchText = match.group(0)!;
+      if (matchText.startsWith('***') && matchText.endsWith('***') && matchText.length > 6) {
+        spans.add(TextSpan(
+          text: matchText,
+          style: baseStyle.copyWith(fontWeight: FontWeight.bold, fontStyle: FontStyle.italic),
+        ));
+      } else if (matchText.startsWith('**') && matchText.endsWith('**') && matchText.length > 4) {
+        spans.add(TextSpan(
+          text: matchText,
+          style: baseStyle.copyWith(fontWeight: FontWeight.bold),
+        ));
+      } else if (matchText.startsWith('*') && matchText.endsWith('*') && matchText.length > 2) {
+        spans.add(TextSpan(
+          text: matchText,
+          style: baseStyle.copyWith(fontStyle: FontStyle.italic),
+        ));
+      } else if (matchText.startsWith('`') && matchText.endsWith('`') && matchText.length > 2) {
+        spans.add(TextSpan(
+          text: matchText,
+          style: baseStyle.copyWith(
+            fontFamily: 'monospace',
+            backgroundColor: isDarkMode ? Colors.white.withAlpha(20) : Colors.black.withAlpha(20),
+            color: isDarkMode ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
+          ),
+        ));
+      } else {
+        spans.add(TextSpan(text: matchText, style: baseStyle));
+      }
+      start = match.end;
+    }
+    
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start), style: baseStyle));
+    }
+    
+    return TextSpan(children: spans, style: baseStyle);
   }
 }
