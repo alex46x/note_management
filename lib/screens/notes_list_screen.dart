@@ -32,6 +32,7 @@ class _NotesListScreenState extends State<NotesListScreen> {
   String _searchQuery = '';
   String? _selectedTag;
   bool _isGroupedByTag = false;
+  String _sortBy = 'date';
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -133,13 +134,58 @@ class _NotesListScreenState extends State<NotesListScreen> {
           // Mockup Title: "My notes" in large, bold format below App Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppConstants.spaceMD),
-            child: Text(
-              'My notes',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 32,
-                color: isDark ? AppConstants.darkTextPrimary : AppConstants.lightTextPrimary,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'My notes',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 34,
+                        color: isDark ? AppConstants.darkTextPrimary : AppConstants.lightTextPrimary,
+                        letterSpacing: -0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Organize your thoughts & tags',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark ? AppConstants.darkTextSecondary : AppConstants.lightTextSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                StreamBuilder<List<Note>>(
+                  stream: _firestoreService.getNotesStream(),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data?.length ?? 0;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: Text(
+                        '$count notes',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppConstants.darkPrimary : AppConstants.lightPrimary,
+                        ),
+                      ),
+                    );
+                  }
+                ),
+              ],
             ),
           ),
           const SizedBox(height: AppConstants.spaceMD),
@@ -198,8 +244,8 @@ class _NotesListScreenState extends State<NotesListScreen> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppConstants.inputRadius),
                           borderSide: BorderSide(
-                            color: theme.colorScheme.primary,
-                            width: 2,
+                            color: isDark ? AppConstants.darkPrimary : AppConstants.lightPrimary,
+                            width: 1.5,
                           ),
                         ),
                       ),
@@ -218,20 +264,23 @@ class _NotesListScreenState extends State<NotesListScreen> {
                     border: Border.all(
                       color: isDark ? AppConstants.darkBorder : AppConstants.lightBorder,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(4),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
                   ),
                   child: IconButton(
                     icon: Icon(
                       Icons.tune_rounded,
-                      color: isDark ? AppConstants.darkTextSecondary : AppConstants.lightTextSecondary,
+                      color: isDark ? AppConstants.darkPrimary : AppConstants.lightPrimary,
+                      size: 20,
                     ),
-                    tooltip: 'Filter notes',
+                    tooltip: 'Sort options',
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Filter feature - sorted by date descending'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                      _showSortOptionsBottomSheet(context, isDark);
                     },
                   ),
                 ),
@@ -302,11 +351,16 @@ class _NotesListScreenState extends State<NotesListScreen> {
                   return matchesQuery && matchesTag;
                 }).toList();
 
-                // Sort: Pinned notes at the top, then sorted by date descending
+                // Sort: Pinned notes at the top, then sort by date or title
                 filteredNotes.sort((a, b) {
                   if (a.isPinned && !b.isPinned) return -1;
                   if (!a.isPinned && b.isPinned) return 1;
-                  return b.createdAt.compareTo(a.createdAt);
+                  
+                  if (_sortBy == 'title') {
+                    return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+                  } else {
+                    return b.createdAt.compareTo(a.createdAt);
+                  }
                 });
 
                 return Column(
@@ -330,20 +384,24 @@ class _NotesListScreenState extends State<NotesListScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF1E3A8A).withAlpha(100) : const Color(0xFFEFF6FF),
+                                color: isDark ? const Color(0xFF1E3A8A).withAlpha(80) : const Color(0xFFEFF6FF),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: const Color(0xFF3B82F6).withAlpha(100),
+                                  color: isDark ? const Color(0xFF3B82F6).withAlpha(120) : const Color(0xFF3B82F6).withAlpha(100),
                                 ),
                               ),
-                              child: const Row(
+                              child: Row(
                                 children: [
-                                  Icon(Icons.add, size: 14, color: Color(0xFF2563EB)),
-                                  SizedBox(width: 4),
+                                  Icon(
+                                    Icons.add, 
+                                    size: 14, 
+                                    color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)
+                                  ),
+                                  const SizedBox(width: 4),
                                   Text(
                                     'Create tag',
                                     style: TextStyle(
-                                      color: Color(0xFF2563EB),
+                                      color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -365,8 +423,11 @@ class _NotesListScreenState extends State<NotesListScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
+                                gradient: _selectedTag == null
+                                    ? const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF4F46E5)])
+                                    : null,
                                 color: _selectedTag == null
-                                    ? (isDark ? AppConstants.darkPrimary : const Color(0xFF334155))
+                                    ? null
                                     : (isDark ? AppConstants.darkSurface : AppConstants.lightBg),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
@@ -374,6 +435,15 @@ class _NotesListScreenState extends State<NotesListScreen> {
                                       ? Colors.transparent
                                       : (isDark ? AppConstants.darkBorder : AppConstants.lightBorder),
                                 ),
+                                boxShadow: _selectedTag == null
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(0xFF3B82F6).withAlpha(60),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ]
+                                    : null,
                               ),
                               child: Text(
                                 'All tags',
@@ -403,8 +473,11 @@ class _NotesListScreenState extends State<NotesListScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
+                                    gradient: isSelected
+                                        ? const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF4F46E5)])
+                                        : null,
                                     color: isSelected
-                                        ? (isDark ? AppConstants.darkPrimary : const Color(0xFF334155))
+                                        ? null
                                         : (isDark ? AppConstants.darkSurface : Colors.white),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
@@ -412,6 +485,15 @@ class _NotesListScreenState extends State<NotesListScreen> {
                                           ? Colors.transparent
                                           : (isDark ? AppConstants.darkBorder : AppConstants.lightBorder),
                                     ),
+                                    boxShadow: isSelected
+                                        ? [
+                                            BoxShadow(
+                                              color: const Color(0xFF3B82F6).withAlpha(60),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            )
+                                          ]
+                                        : null,
                                   ),
                                   child: Text(
                                     tag,
@@ -503,27 +585,55 @@ class _NotesListScreenState extends State<NotesListScreen> {
       
       // Royal Blue FAB Capsule aligned center float at bottom
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AddEditNoteScreen(),
+      floatingActionButton: Container(
+        height: 52,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF3B82F6), Color(0xFF4F46E5)], // Royal Blue to Indigo
+          ),
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF3B82F6).withAlpha(100),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
-          );
-        },
-        icon: const Icon(Icons.add, color: Colors.white, size: 20),
-        label: const Text(
-          'Add Note',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(26),
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddEditNoteScreen(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(26),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Add Note',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-        backgroundColor: const Color(0xFF3B82F6), // Royal Blue
-        elevation: 4,
-        shape: const StadiumBorder(),
       ),
     );
   }
@@ -821,6 +931,131 @@ class _NotesListScreenState extends State<NotesListScreen> {
       },
     );
   }
+
+  void _showSortOptionsBottomSheet(BuildContext context, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppConstants.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white24 : Colors.black12,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Sort Notes By',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppConstants.darkTextPrimary : AppConstants.lightTextPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSortOption(
+                      context: context,
+                      title: 'Date Created (Newest)',
+                      value: 'date',
+                      icon: Icons.calendar_today_rounded,
+                      isDark: isDark,
+                      setSheetState: setSheetState,
+                    ),
+                    _buildSortOption(
+                      context: context,
+                      title: 'Alphabetical (Title)',
+                      value: 'title',
+                      icon: Icons.sort_by_alpha_rounded,
+                      isDark: isDark,
+                      setSheetState: setSheetState,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  Widget _buildSortOption({
+    required BuildContext context,
+    required String title,
+    required String value,
+    required IconData icon,
+    required bool isDark,
+    required StateSetter setSheetState,
+  }) {
+    final isSelected = _sortBy == value;
+    final primaryColor = isDark ? AppConstants.darkPrimary : AppConstants.lightPrimary;
+    
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _sortBy = value;
+        });
+        setSheetState(() {});
+        Navigator.pop(context);
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? (isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF))
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: isSelected
+              ? Border.all(color: primaryColor.withAlpha(80), width: 1)
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? primaryColor : (isDark ? AppConstants.darkTextSecondary : AppConstants.lightTextSecondary),
+              size: 20,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isDark ? AppConstants.darkTextPrimary : AppConstants.lightTextPrimary,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle_rounded,
+                color: primaryColor,
+                size: 20,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class TagGroupCard extends StatelessWidget {
@@ -841,17 +1076,24 @@ class TagGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleColor = isDark ? Colors.white : Colors.black87;
-    final subtitleColor = isDark ? Colors.white70 : Colors.black54;
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtitleColor = isDark ? Colors.white70 : const Color(0xFF334155);
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF27272A) : const Color(0xFFF3F4F6),
+        color: isDark ? const Color(0xFF16171F) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? AppConstants.darkBorder : AppConstants.lightBorder,
           width: 1.0,
         ),
+        boxShadow: isDark ? [] : [
+          BoxShadow(
+            color: Colors.black.withAlpha(4),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -860,14 +1102,19 @@ class TagGroupCard extends StatelessWidget {
           onTap: onTagTap,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(14.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header: Tag title & Count
+                // Header: Folder Icon, Tag Title & Count
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    Icon(
+                      Icons.folder_open_rounded,
+                      size: 18,
+                      color: isDark ? AppConstants.darkPrimary : AppConstants.lightPrimary,
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         tag,
@@ -875,6 +1122,7 @@ class TagGroupCard extends StatelessWidget {
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: titleColor,
+                          letterSpacing: -0.2,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -884,14 +1132,14 @@ class TagGroupCard extends StatelessWidget {
                     Text(
                       '${notes.length} >',
                       style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white38 : Colors.black38,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: isDark ? Colors.white30 : Colors.black38,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 
                 // Bullet points of notes
                 Expanded(
@@ -911,7 +1159,7 @@ class TagGroupCard extends StatelessWidget {
                                 '• ',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: isDark ? Colors.white38 : Colors.black38,
+                                  color: isDark ? AppConstants.darkPrimary.withAlpha(120) : AppConstants.lightPrimary.withAlpha(150),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),

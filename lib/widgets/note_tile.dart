@@ -22,28 +22,24 @@ class NoteTile extends StatelessWidget {
     final text = '$title $description'.toLowerCase();
     
     IconData iconData = Icons.description_rounded;
-    Color iconColor = const Color(0xFF6366F1); // Indigo default
-    Color bgColor = isDarkMode ? const Color(0xFF312E81) : const Color(0xFFEEF2FF);
+    Color iconColor = isDarkMode ? const Color(0xFF818CF8) : const Color(0xFF4F46E5); // Indigo default
     
     if (text.contains('design') || text.contains('tutorial') || text.contains('youtube') || text.contains('ux') || text.contains('ui')) {
       iconData = Icons.play_arrow_rounded;
-      iconColor = const Color(0xFFEF4444); // Red
-      bgColor = isDarkMode ? const Color(0xFF7F1D1D) : const Color(0xFFFEE2E2);
+      iconColor = isDarkMode ? const Color(0xFFF87171) : const Color(0xFFDC2626); // Red
     } else if (text.contains('marketing') || text.contains('digital') || text.contains('mic') || text.contains('voice') || text.contains('audio')) {
       iconData = Icons.mic_rounded;
-      iconColor = const Color(0xFF3B82F6); // Blue
-      bgColor = isDarkMode ? const Color(0xFF1E3A8A) : const Color(0xFFDBEAFE);
+      iconColor = isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB); // Blue
     } else if (text.contains('progress') || text.contains('profession') || text.contains('file') || text.contains('folder') || text.contains('upload')) {
       iconData = Icons.folder_rounded;
-      iconColor = const Color(0xFFF59E0B); // Amber
-      bgColor = isDarkMode ? const Color(0xFF78350F) : const Color(0xFFFEF3C7);
+      iconColor = isDarkMode ? const Color(0xFFFBBF24) : const Color(0xFFD97706); // Amber
     }
 
     return Container(
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: bgColor,
+        color: isDarkMode ? Colors.white.withAlpha(25) : Colors.black.withAlpha(12),
         shape: BoxShape.circle,
       ),
       child: Icon(
@@ -114,20 +110,29 @@ class NoteTile extends StatelessWidget {
     // Check if the note was created in the last 2 hours
     final isNew = DateTime.now().difference(note.createdAt).inHours < 2;
 
+    final cardBgColor = AppConstants.getNoteColor(note.id, isDarkMode);
+    final borderColor = isDarkMode 
+        ? (cardBgColor == const Color(0xFF16171F) ? AppConstants.darkBorder : cardBgColor.withAlpha(120))
+        : (cardBgColor == const Color(0xFFFFFFFF) ? AppConstants.lightBorder : cardBgColor.withAlpha(150));
+
+    final titleColor = isDarkMode ? Colors.white : const Color(0xFF0F172A);
+    final bodyColor = isDarkMode ? Colors.white70 : const Color(0xFF334155);
+    final dateColor = isDarkMode ? Colors.white54 : const Color(0xFF64748B);
+
     return Stack(
       children: [
         Container(
           margin: const EdgeInsets.only(bottom: AppConstants.spaceMD),
           decoration: BoxDecoration(
-            color: isDarkMode ? AppConstants.darkSurface : Colors.white,
+            color: cardBgColor,
             borderRadius: BorderRadius.circular(AppConstants.cardRadius),
             border: Border.all(
-              color: isDarkMode ? AppConstants.darkBorder : AppConstants.lightBorder,
+              color: borderColor,
               width: 1.0,
             ),
-            boxShadow: [
+            boxShadow: isDarkMode ? [] : [
               BoxShadow(
-                color: Colors.black.withAlpha(8),
+                color: Colors.black.withAlpha(6),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -161,7 +166,7 @@ class NoteTile extends StatelessWidget {
                                 child: Text(
                                   note.title.isNotEmpty ? note.title : 'Untitled',
                                   style: theme.textTheme.titleMedium?.copyWith(
-                                    color: isDarkMode ? AppConstants.darkTextPrimary : AppConstants.lightTextPrimary,
+                                    color: titleColor,
                                     fontWeight: FontWeight.bold,
                                     height: 1.2,
                                   ),
@@ -189,7 +194,7 @@ class NoteTile extends StatelessWidget {
                                 children: _parseMarkdown(
                                   note.description,
                                   theme.textTheme.bodyMedium?.copyWith(
-                                    color: isDarkMode ? AppConstants.darkTextSecondary : AppConstants.lightTextSecondary,
+                                    color: bodyColor,
                                     fontSize: 13,
                                     height: 1.4,
                                   ) ?? const TextStyle(),
@@ -202,7 +207,7 @@ class NoteTile extends StatelessWidget {
                           Text(
                             formattedDate,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: isDarkMode ? AppConstants.darkTextSecondary : AppConstants.lightTextSecondary,
+                              color: dateColor,
                               fontSize: 11,
                             ),
                           ),
@@ -323,18 +328,22 @@ class NoteTile extends StatelessWidget {
             top: -2,
             right: 12,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
               decoration: BoxDecoration(
-                color: const Color(0xFFDBEAFE), // Light blue
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF3B82F6).withAlpha(100), width: 1),
+                color: isDarkMode ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDarkMode ? const Color(0xFF059669).withAlpha(150) : const Color(0xFF34D399).withAlpha(100),
+                  width: 1,
+                ),
               ),
-              child: const Text(
+              child: Text(
                 'NEW',
                 style: TextStyle(
-                  color: Color(0xFF1E40AF), // Dark blue text
+                  color: isDarkMode ? const Color(0xFF34D399) : const Color(0xFF065F46),
                   fontSize: 9,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
