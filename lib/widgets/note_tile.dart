@@ -65,22 +65,22 @@ class NoteTile extends StatelessWidget {
       }
       
       final String matchText = match.group(0)!;
-      if (matchText.startsWith('***') && matchText.endsWith('***')) {
+      if (matchText.startsWith('***') && matchText.endsWith('***') && matchText.length > 6) {
         spans.add(TextSpan(
           text: matchText.substring(3, matchText.length - 3),
           style: baseStyle.copyWith(fontWeight: FontWeight.bold, fontStyle: FontStyle.italic),
         ));
-      } else if (matchText.startsWith('**') && matchText.endsWith('**')) {
+      } else if (matchText.startsWith('**') && matchText.endsWith('**') && matchText.length > 4) {
         spans.add(TextSpan(
           text: matchText.substring(2, matchText.length - 2),
           style: baseStyle.copyWith(fontWeight: FontWeight.bold),
         ));
-      } else if (matchText.startsWith('*') && matchText.endsWith('*')) {
+      } else if (matchText.startsWith('*') && matchText.endsWith('*') && matchText.length > 2) {
         spans.add(TextSpan(
           text: matchText.substring(1, matchText.length - 1),
           style: baseStyle.copyWith(fontStyle: FontStyle.italic),
         ));
-      } else if (matchText.startsWith('`') && matchText.endsWith('`')) {
+      } else if (matchText.startsWith('`') && matchText.endsWith('`') && matchText.length > 2) {
         spans.add(TextSpan(
           text: matchText.substring(1, matchText.length - 1),
           style: baseStyle.copyWith(
@@ -90,6 +90,8 @@ class NoteTile extends StatelessWidget {
             color: isDarkMode ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
           ),
         ));
+      } else {
+        spans.add(TextSpan(text: matchText, style: baseStyle));
       }
       start = match.end;
     }
