@@ -184,7 +184,7 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: AppConstants.getNoteColor(widget.note?.id ?? '', isDarkMode),
         appBar: AppBar(
           leading: IconButton(
             icon: Icon(
@@ -209,6 +209,27 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
           elevation: 0,
           backgroundColor: Colors.transparent,
           actions: [
+            if (isEditMode)
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, color: AppConstants.colorError),
+                tooltip: 'Delete note',
+                onPressed: () async {
+                  final confirmed = await _showDeleteConfirmationDialog(context);
+                  if (confirmed == true && context.mounted) {
+                    final navigator = Navigator.of(context);
+                    final scaffoldMessenger = ScaffoldMessenger.of(context);
+                    await _firestoreService.deleteNote(widget.note!.id);
+                    navigator.pop();
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Note deleted'),
+                        backgroundColor: AppConstants.colorError,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+              ),
             IconButton(
               icon: Icon(
                 _isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
@@ -245,16 +266,16 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
                   // Unified Paper Sheet/Canvas for notes input
                   Container(
                     decoration: BoxDecoration(
-                      color: isDarkMode ? AppConstants.darkSurface : Colors.white,
+                      color: isDarkMode ? Colors.black.withAlpha(80) : Colors.white.withAlpha(150),
                       borderRadius: BorderRadius.circular(AppConstants.cardRadius),
                       border: Border.all(
-                        color: isDarkMode ? AppConstants.darkBorder : AppConstants.lightBorder,
+                        color: isDarkMode ? Colors.white.withAlpha(20) : Colors.black.withAlpha(15),
                         width: 1.0,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withAlpha(6),
-                          blurRadius: 10,
+                          color: Colors.black.withAlpha(8),
+                          blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
                       ],
@@ -341,38 +362,40 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
                               spacing: 8.0,
                               runSpacing: 4.0,
                               children: tagList.map((tag) {
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode 
-                                        ? const Color(0xFF1E3A8A).withAlpha(100) 
-                                        : const Color(0xFFEFF6FF),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: const Color(0xFF3B82F6).withAlpha(60),
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: isDarkMode 
+                                          ? const Color(0xFF1E3A8A).withAlpha(120) 
+                                          : const Color(0xFFEFF6FF),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: isDarkMode
+                                            ? const Color(0xFF3B82F6).withAlpha(150)
+                                            : const Color(0xFF3B82F6).withAlpha(100),
+                                      ),
                                     ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.tag_rounded,
-                                        size: 11,
-                                        color: Color(0xFF2563EB),
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        tag,
-                                        style: const TextStyle(
-                                          color: Color(0xFF2563EB),
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.tag_rounded,
+                                          size: 11,
+                                          color: isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          tag,
+                                          style: TextStyle(
+                                            color: isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
                             ),
                           ),
 
@@ -380,36 +403,43 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
                         
                         // Formatting Toolbar Row
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          color: isDarkMode ? Colors.white.withAlpha(5) : Colors.black.withAlpha(5),
-                          child: Row(
-                            children: [
-                              _buildFormatButton(
-                                icon: const Icon(Icons.format_bold_rounded),
-                                tooltip: 'Bold',
-                                onTap: () => _insertMarkup('**', '**'),
-                              ),
-                              _buildFormatButton(
-                                icon: const Icon(Icons.format_italic_rounded),
-                                tooltip: 'Italic',
-                                onTap: () => _insertMarkup('*', '*'),
-                              ),
-                              _buildFormatButton(
-                                icon: const Icon(Icons.code_rounded),
-                                tooltip: 'Inline Code',
-                                onTap: () => _insertMarkup('`', '`'),
-                              ),
-                              _buildFormatButton(
-                                icon: const Icon(Icons.format_list_bulleted_rounded),
-                                tooltip: 'Bullet List',
-                                onTap: () => _insertMarkup('\n• ', ''),
-                              ),
-                              _buildFormatButton(
-                                icon: const Icon(Icons.playlist_add_check_rounded),
-                                tooltip: 'Todo Checkbox',
-                                onTap: () => _insertMarkup('\n[ ] ', ''),
-                              ),
-                            ],
+                          margin: const EdgeInsets.symmetric(horizontal: AppConstants.spaceMD, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDarkMode ? Colors.white.withAlpha(15) : Colors.black.withAlpha(8),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _buildFormatButton(
+                                  icon: const Icon(Icons.format_bold_rounded),
+                                  tooltip: 'Bold',
+                                  onTap: () => _insertMarkup('**', '**'),
+                                ),
+                                _buildFormatButton(
+                                  icon: const Icon(Icons.format_italic_rounded),
+                                  tooltip: 'Italic',
+                                  onTap: () => _insertMarkup('*', '*'),
+                                ),
+                                _buildFormatButton(
+                                  icon: const Icon(Icons.code_rounded),
+                                  tooltip: 'Inline Code',
+                                  onTap: () => _insertMarkup('`', '`'),
+                                ),
+                                _buildFormatButton(
+                                  icon: const Icon(Icons.format_list_bulleted_rounded),
+                                  tooltip: 'Bullet List',
+                                  onTap: () => _insertMarkup('\n• ', ''),
+                                ),
+                                _buildFormatButton(
+                                  icon: const Icon(Icons.playlist_add_check_rounded),
+                                  tooltip: 'Todo Checkbox',
+                                  onTap: () => _insertMarkup('\n[ ] ', ''),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         
@@ -522,15 +552,16 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
   }
 
   Widget _buildFormatButton({required Widget icon, required String tooltip, required VoidCallback onTap}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return IconButton(
       icon: icon,
       tooltip: tooltip,
       onPressed: onTap,
       visualDensity: VisualDensity.compact,
-      iconSize: 20,
-      color: Theme.of(context).brightness == Brightness.dark 
-          ? AppConstants.darkTextSecondary 
-          : AppConstants.lightTextSecondary,
+      iconSize: 18,
+      color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
     );
   }
 
@@ -557,6 +588,120 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
     _descriptionController.text = newText;
     _descriptionController.selection = TextSelection.collapsed(offset: newCursorOffset);
     _onTextChanged();
+  }
+
+  Future<bool?> _showDeleteConfirmationDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bgColor = isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7);
+    final titleColor = isDark ? Colors.white : Colors.black;
+    final subtitleColor = isDark ? const Color(0xFFEBEBF5).withAlpha(153) : const Color(0xFF3C3C43).withAlpha(153);
+    final borderColor = isDark ? const Color(0x388E8E93) : const Color(0x3C3C3C43);
+    final cancelColor = isDark ? const Color(0xFF0A84FF) : const Color(0xFF007AFF);
+    const deleteColor = Color(0xFFFF3B30); // iOS Red
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40.0),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Delete this note?',
+                        style: TextStyle(
+                          color: titleColor,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'This will be removed permanently. This action can\'t be undone.',
+                        style: TextStyle(
+                          color: subtitleColor,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  height: 0.5,
+                  color: borderColor,
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context, false),
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(14),
+                        ),
+                        child: Container(
+                          height: 48,
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: cancelColor,
+                              fontSize: 17,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 0.5,
+                      height: 48,
+                      color: borderColor,
+                    ),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context, true),
+                        borderRadius: const BorderRadius.only(
+                          bottomRight: Radius.circular(14),
+                        ),
+                        child: Container(
+                          height: 48,
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'Delete',
+                            style: TextStyle(
+                              color: deleteColor,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
