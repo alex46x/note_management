@@ -22,25 +22,34 @@ class FirestoreService {
   }
 
   /// Add a new note to Firestore.
-  Future<DocumentReference> addNote(String title, String description, [List<String> tags = const []]) async {
+  Future<DocumentReference> addNote(String title, String description, [List<String> tags = const [], bool isPinned = false]) async {
     final newNote = Note(
       id: '',
       title: title.trim(),
       description: description.trim(),
       createdAt: DateTime.now(),
       tags: tags,
+      isPinned: isPinned,
     );
     
     return await _notesCollection.add(newNote.toMap());
   }
 
   /// Update an existing note in Firestore.
-  Future<void> updateNote(String id, String title, String description, [List<String> tags = const []]) async {
+  Future<void> updateNote(String id, String title, String description, [List<String> tags = const [], bool isPinned = false]) async {
     return await _notesCollection.doc(id).update({
       'title': title.trim(),
       'description': description.trim(),
-      'createdAt': Timestamp.fromDate(DateTime.now()), // Or keep original createdAt, but usually update timestamp is fine. The model has createdAt, so updating it shows modified date.
+      'createdAt': Timestamp.fromDate(DateTime.now()),
       'tags': tags,
+      'isPinned': isPinned,
+    });
+  }
+
+  /// Toggle the pinned status of a note.
+  Future<void> togglePin(String id, bool currentStatus) async {
+    return await _notesCollection.doc(id).update({
+      'isPinned': !currentStatus,
     });
   }
 

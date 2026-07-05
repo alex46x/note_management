@@ -7,12 +7,14 @@ class NoteTile extends StatelessWidget {
   final Note note;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback onPinToggle;
 
   const NoteTile({
     super.key,
     required this.note,
     required this.onTap,
     required this.onDelete,
+    required this.onPinToggle,
   });
 
   /// Dynamic icon and background color generation based on note content keywords
@@ -50,6 +52,53 @@ class NoteTile extends StatelessWidget {
         size: 24,
       ),
     );
+  }
+
+  List<TextSpan> _parseMarkdown(String text, TextStyle baseStyle, bool isDarkMode) {
+    final List<TextSpan> spans = [];
+    final RegExp regex = RegExp(r'(\*\*\*.*?\*\*\*)|(\*\*.*?\*\*)|(\*.*?\*)|(\`.*?\`)');
+    
+    int start = 0;
+    for (final Match match in regex.allMatches(text)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: text.substring(start, match.start), style: baseStyle));
+      }
+      
+      final String matchText = match.group(0)!;
+      if (matchText.startsWith('***') && matchText.endsWith('***')) {
+        spans.add(TextSpan(
+          text: matchText.substring(3, matchText.length - 3),
+          style: baseStyle.copyWith(fontWeight: FontWeight.bold, fontStyle: FontStyle.italic),
+        ));
+      } else if (matchText.startsWith('**') && matchText.endsWith('**')) {
+        spans.add(TextSpan(
+          text: matchText.substring(2, matchText.length - 2),
+          style: baseStyle.copyWith(fontWeight: FontWeight.bold),
+        ));
+      } else if (matchText.startsWith('*') && matchText.endsWith('*')) {
+        spans.add(TextSpan(
+          text: matchText.substring(1, matchText.length - 1),
+          style: baseStyle.copyWith(fontStyle: FontStyle.italic),
+        ));
+      } else if (matchText.startsWith('`') && matchText.endsWith('`')) {
+        spans.add(TextSpan(
+          text: matchText.substring(1, matchText.length - 1),
+          style: baseStyle.copyWith(
+            fontFamily: 'monospace',
+            fontSize: (baseStyle.fontSize ?? 13) - 1,
+            backgroundColor: isDarkMode ? Colors.white.withAlpha(20) : Colors.black.withAlpha(20),
+            color: isDarkMode ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
+          ),
+        ));
+      }
+      start = match.end;
+    }
+    
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start), style: baseStyle));
+    }
+    
+    return spans;
   }
 
   @override
@@ -99,27 +148,60 @@ class NoteTile extends StatelessWidget {
                     _buildLeadIcon(note.title, note.description, isDarkMode),
                     const SizedBox(width: AppConstants.spaceMD),
                     
-                    // Middle content: Title & DateTime
+                    // Middle content: Title, Description Preview & DateTime
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            note.title,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: isDarkMode ? AppConstants.darkTextPrimary : AppConstants.lightTextPrimary,
-                              fontWeight: FontWeight.bold,
-                              height: 1.2,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  note.title.isNotEmpty ? note.title : 'Untitled',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: isDarkMode ? AppConstants.darkTextPrimary : AppConstants.lightTextPrimary,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (note.isPinned)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 6.0),
+                                  child: Icon(
+                                    Icons.push_pin_rounded,
+                                    size: 14,
+                                    color: isDarkMode ? AppConstants.darkPrimary : const Color(0xFF3B82F6),
+                                  ),
+                                ),
+                            ],
                           ),
+                          if (note.description.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            RichText(
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              text: TextSpan(
+                                children: _parseMarkdown(
+                                  note.description,
+                                  theme.textTheme.bodyMedium?.copyWith(
+                                    color: isDarkMode ? AppConstants.darkTextSecondary : AppConstants.lightTextSecondary,
+                                    fontSize: 13,
+                                    height: 1.4,
+                                  ) ?? const TextStyle(),
+                                  isDarkMode,
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 6),
                           Text(
                             formattedDate,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: isDarkMode ? AppConstants.darkTextSecondary : AppConstants.lightTextSecondary,
-                              fontSize: 12,
+                              fontSize: 11,
                             ),
                           ),
                         ],
@@ -147,9 +229,35 @@ class NoteTile extends StatelessWidget {
                           onTap();
                         } else if (value == 'delete') {
                           onDelete();
+                        } else if (value == 'pin') {
+                          onPinToggle();
                         }
                       },
                       itemBuilder: (BuildContext context) => [
+                        PopupMenuItem(
+                          value: 'pin',
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  note.isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined, 
+                                  size: 18, 
+                                  color: isDarkMode ? AppConstants.darkTextSecondary : const Color(0xFF6B7280),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  note.isPinned ? 'Unpin note' : 'Pin to top',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDarkMode ? AppConstants.darkTextPrimary : AppConstants.lightTextPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         PopupMenuItem(
                           value: 'edit',
                           child: Padding(

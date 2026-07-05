@@ -6,6 +6,7 @@ class Note {
   final String description;
   final DateTime createdAt;
   final List<String> tags;
+  final bool isPinned;
 
   Note({
     required this.id,
@@ -13,6 +14,7 @@ class Note {
     required this.description,
     required this.createdAt,
     required this.tags,
+    this.isPinned = false,
   });
 
   /// Factory constructor to create a [Note] from a Firestore document map.
@@ -35,6 +37,7 @@ class Note {
       description: map['description'] as String? ?? '',
       createdAt: parsedDate,
       tags: List<String>.from(map['tags'] ?? []),
+      isPinned: map['isPinned'] as bool? ?? false,
     );
   }
 
@@ -45,6 +48,7 @@ class Note {
       'description': description,
       'createdAt': Timestamp.fromDate(createdAt),
       'tags': tags,
+      'isPinned': isPinned,
     };
   }
 
@@ -55,6 +59,7 @@ class Note {
     String? description,
     DateTime? createdAt,
     List<String>? tags,
+    bool? isPinned,
   }) {
     return Note(
       id: id ?? this.id,
@@ -62,6 +67,7 @@ class Note {
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       tags: tags ?? this.tags,
+      isPinned: isPinned ?? this.isPinned,
     );
   }
 }

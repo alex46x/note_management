@@ -22,6 +22,7 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
 
   bool _isSaving = false;
   bool _hasChanges = false;
+  bool _isPinned = false;
 
   bool get isEditMode => widget.note != null && widget.note!.id.isNotEmpty;
 
@@ -31,6 +32,7 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
     _titleController = TextEditingController(text: widget.note?.title ?? '');
     _descriptionController = TextEditingController(text: widget.note?.description ?? '');
     _tagsController = TextEditingController(text: widget.note?.tags.join(', ') ?? '');
+    _isPinned = widget.note?.isPinned ?? false;
 
     _titleController.addListener(_onTextChanged);
     _descriptionController.addListener(_onTextChanged);
@@ -41,12 +43,16 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
     final originalTitle = widget.note?.title ?? '';
     final originalDescription = widget.note?.description ?? '';
     final originalTags = widget.note?.tags.join(', ') ?? '';
+    final originalPinned = widget.note?.isPinned ?? false;
     
     final currentTitle = _titleController.text;
     final currentDescription = _descriptionController.text;
     final currentTags = _tagsController.text;
 
-    final changed = currentTitle != originalTitle || currentDescription != originalDescription || currentTags != originalTags;
+    final changed = currentTitle != originalTitle || 
+        currentDescription != originalDescription || 
+        currentTags != originalTags || 
+        _isPinned != originalPinned;
     
     if (changed != _hasChanges) {
       setState(() {
@@ -91,12 +97,14 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
           _titleController.text,
           _descriptionController.text,
           tags,
+          _isPinned,
         );
       } else {
         await _firestoreService.addNote(
           _titleController.text,
           _descriptionController.text,
           tags,
+          _isPinned,
         );
       }
 
@@ -201,6 +209,21 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
           elevation: 0,
           backgroundColor: Colors.transparent,
           actions: [
+            IconButton(
+              icon: Icon(
+                _isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+                color: _isPinned 
+                    ? (isDarkMode ? AppConstants.darkPrimary : const Color(0xFF3B82F6)) 
+                    : (isDarkMode ? AppConstants.darkTextSecondary : AppConstants.lightTextSecondary),
+              ),
+              tooltip: _isPinned ? 'Unpin note' : 'Pin to top',
+              onPressed: () {
+                setState(() {
+                  _isPinned = !_isPinned;
+                  _onTextChanged();
+                });
+              },
+            ),
             if (_hasChanges && !_isSaving)
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
@@ -355,6 +378,43 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
 
                         const Divider(height: 1, indent: 16, endIndent: 16),
                         
+                        // Formatting Toolbar Row
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          color: isDarkMode ? Colors.white.withAlpha(5) : Colors.black.withAlpha(5),
+                          child: Row(
+                            children: [
+                              _buildFormatButton(
+                                icon: const Icon(Icons.format_bold_rounded),
+                                tooltip: 'Bold',
+                                onTap: () => _insertMarkup('**', '**'),
+                              ),
+                              _buildFormatButton(
+                                icon: const Icon(Icons.format_italic_rounded),
+                                tooltip: 'Italic',
+                                onTap: () => _insertMarkup('*', '*'),
+                              ),
+                              _buildFormatButton(
+                                icon: const Icon(Icons.code_rounded),
+                                tooltip: 'Inline Code',
+                                onTap: () => _insertMarkup('`', '`'),
+                              ),
+                              _buildFormatButton(
+                                icon: const Icon(Icons.format_list_bulleted_rounded),
+                                tooltip: 'Bullet List',
+                                onTap: () => _insertMarkup('\n• ', ''),
+                              ),
+                              _buildFormatButton(
+                                icon: const Icon(Icons.playlist_add_check_rounded),
+                                tooltip: 'Todo Checkbox',
+                                onTap: () => _insertMarkup('\n[ ] ', ''),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const Divider(height: 1, indent: 16, endIndent: 16),
+                        
                         // Description Input Field
                         TextFormField(
                           controller: _descriptionController,
@@ -459,5 +519,43 @@ class _AddEditNoteScreenState extends State<AddEditNoteScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildFormatButton({required Widget icon, required String tooltip, required VoidCallback onTap}) {
+    return IconButton(
+      icon: icon,
+      tooltip: tooltip,
+      onPressed: onTap,
+      visualDensity: VisualDensity.compact,
+      iconSize: 20,
+      color: Theme.of(context).brightness == Brightness.dark 
+          ? AppConstants.darkTextSecondary 
+          : AppConstants.lightTextSecondary,
+    );
+  }
+
+  void _insertMarkup(String openTag, String closeTag) {
+    final text = _descriptionController.text;
+    final selection = _descriptionController.selection;
+    
+    final int start = selection.start;
+    final int end = selection.end;
+    
+    String newText;
+    int newCursorOffset;
+
+    if (start < 0 || end < 0) {
+      newText = text + openTag + closeTag;
+      newCursorOffset = newText.length - closeTag.length;
+    } else {
+      final selectedText = text.substring(start, end);
+      final replacement = openTag + selectedText + closeTag;
+      newText = text.replaceRange(start, end, replacement);
+      newCursorOffset = start + openTag.length + selectedText.length;
+    }
+    
+    _descriptionController.text = newText;
+    _descriptionController.selection = TextSelection.collapsed(offset: newCursorOffset);
+    _onTextChanged();
   }
 }

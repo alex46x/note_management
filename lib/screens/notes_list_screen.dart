@@ -302,6 +302,13 @@ class _NotesListScreenState extends State<NotesListScreen> {
                   return matchesQuery && matchesTag;
                 }).toList();
 
+                // Sort: Pinned notes at the top, then sorted by date descending
+                filteredNotes.sort((a, b) {
+                  if (a.isPinned && !b.isPinned) return -1;
+                  if (!a.isPinned && b.isPinned) return 1;
+                  return b.createdAt.compareTo(a.createdAt);
+                });
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -477,6 +484,9 @@ class _NotesListScreenState extends State<NotesListScreen> {
                                       if (confirmed == true && context.mounted) {
                                         _deleteNoteWithUndo(note, context);
                                       }
+                                    },
+                                    onPinToggle: () async {
+                                      await _firestoreService.togglePin(note.id, note.isPinned);
                                     },
                                   ),
                                 );
